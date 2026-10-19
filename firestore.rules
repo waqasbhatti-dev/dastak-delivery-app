@@ -1,0 +1,374 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Catch-All: Deny by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+             ('email' in request.auth.token) &&
+             (request.auth.token.email.lower() in ['mwaqasbhatti1230@gmail.com', 'mwaqasbhatti57570@gmail.com']);
+    }
+
+    // --- Entity Validation Functions ---
+    function isValidUser(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 25)) &&
+             data.role in ['customer', 'rider', 'admin'] &&
+             data.preferredLanguage in ['en', 'ur'] &&
+             data.accountStatus in ['active', 'suspended'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidRiderApplication(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() <= 100 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 25 &&
+             data.cnicNumber is string && data.cnicNumber.size() > 0 && data.cnicNumber.size() <= 30 &&
+             (!('cnicFrontImageUrl' in data) || (data.cnicFrontImageUrl is string && data.cnicFrontImageUrl.size() <= 1000000)) &&
+             (!('cnicBackImageUrl' in data) || (data.cnicBackImageUrl is string && data.cnicBackImageUrl.size() <= 1000000)) &&
+             (!('preferredLanguage' in data) || data.preferredLanguage in ['en', 'ur']) &&
+             (!('vehicleType' in data) || data.vehicleType in ['motorcycle', 'scooter', 'bicycle']) &&
+             (!('vehicleRegistrationNumber' in data) || (data.vehicleRegistrationNumber is string && data.vehicleRegistrationNumber.size() <= 50)) &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             (!('rejectionReason' in data) || (data.rejectionReason is string && data.rejectionReason.size() <= 500)) &&
+             (!('reviewedBy' in data) || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
+             (!('reviewedAt' in data) || (data.reviewedAt is timestamp && data.reviewedAt <= request.time)) &&
+             (!('submittedAt' in data) || (data.submittedAt is timestamp && data.submittedAt <= request.time)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp && data.createdAt <= request.time)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidRider(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             (!('fullName' in data) || (data.fullName is string && data.fullName.size() <= 100)) &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 25)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+             (!('cnicNumber' in data) || (data.cnicNumber is string && data.cnicNumber.size() <= 30)) &&
+             data.status in ['approved', 'suspended'] &&
+             data.isOnline is bool &&
+             (!('preferredLanguage' in data) || data.preferredLanguage in ['en', 'ur', '']) &&
+             (!('activeOrderId' in data) || (data.activeOrderId is string && data.activeOrderId.size() <= 128)) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp && data.createdAt <= request.time)) &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidTermsVersion(data) {
+      return data.version is string && data.version.size() > 0 && data.version.size() <= 20 &&
+             data.titleEn is string && data.titleEn.size() > 0 && data.titleEn.size() <= 200 &&
+             data.titleUr is string && data.titleUr.size() > 0 && data.titleUr.size() <= 200 &&
+             data.contentEn is string && data.contentEn.size() > 0 && data.contentEn.size() <= 20000 &&
+             data.contentUr is string && data.contentUr.size() > 0 && data.contentUr.size() <= 20000 &&
+             data.isActive is bool &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTermsAcceptance(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.termsVersion is string && data.termsVersion.size() > 0 && data.termsVersion.size() <= 20 &&
+             data.language in ['en', 'ur'] &&
+             data.acceptedAt is timestamp && data.acceptedAt <= request.time &&
+             (!('ipOrDeviceId' in data) || (data.ipOrDeviceId is string && data.ipOrDeviceId.size() <= 128));
+    }
+
+    function isValidOrder(data) {
+      return data.customerId is string && data.customerId.size() > 0 && data.customerId.size() <= 128 &&
+             (!('customerName' in data) || (data.customerName is string && data.customerName.size() <= 100)) &&
+             (!('assignedRiderId' in data) || (data.assignedRiderId is string && data.assignedRiderId.size() <= 128)) &&
+             data.itemDescription is string && data.itemDescription.size() <= 4000 &&
+             (!('itemPhotoUrls' in data) || (data.itemPhotoUrls is list && data.itemPhotoUrls.size() <= 10)) &&
+             (!('voiceAudioUrl' in data) || (data.voiceAudioUrl is string && data.voiceAudioUrl.size() <= 1000000)) &&
+             data.customerPhone is string && data.customerPhone.size() > 0 && data.customerPhone.size() <= 25 &&
+             data.deliveryBlock is string && data.deliveryBlock.size() > 0 && data.deliveryBlock.size() <= 100 &&
+             data.deliveryStreet is string && data.deliveryStreet.size() > 0 && data.deliveryStreet.size() <= 100 &&
+             data.deliveryHouseNumber is string && data.deliveryHouseNumber.size() > 0 && data.deliveryHouseNumber.size() <= 100 &&
+             (!('additionalAddressInstructions' in data) || (data.additionalAddressInstructions is string && data.additionalAddressInstructions.size() <= 500)) &&
+             (!('customerLatitude' in data) || data.customerLatitude is number) &&
+             (!('customerLongitude' in data) || data.customerLongitude is number) &&
+             (!('centralLatitude' in data) || data.centralLatitude is number) &&
+             (!('centralLongitude' in data) || data.centralLongitude is number) &&
+             data.orderStatus in ['Pending', 'Assigned', 'Shopping', 'Awaiting Customer Bill Approval', 'Bill Rejected', 'Bill Approved', 'Out for Delivery', 'Arrived Outside', 'Delivered', 'Cancelled'] &&
+             (!('estimatedItemCost' in data) || data.estimatedItemCost is number) &&
+             (!('billAmount' in data) || data.billAmount is number) &&
+             (!('billPhotoUrl' in data) || (data.billPhotoUrl is string && data.billPhotoUrl.size() <= 1000000)) &&
+             (!('purchasedItemsDescription' in data) || (data.purchasedItemsDescription is string && data.purchasedItemsDescription.size() <= 2000)) &&
+             (!('substitutionsNotes' in data) || (data.substitutionsNotes is string && data.substitutionsNotes.size() <= 2000)) &&
+             (!('riderNotes' in data) || (data.riderNotes is string && data.riderNotes.size() <= 2000)) &&
+             (!('billRejectionReason' in data) || (data.billRejectionReason is string && data.billRejectionReason.size() <= 1000)) &&
+             (!('billApprovalStatus' in data) || data.billApprovalStatus in ['none', 'pending_approval', 'approved', 'rejected']) &&
+             (!('deliveryDistanceKm' in data) || data.deliveryDistanceKm is number) &&
+             (!('deliveryCharge' in data) || data.deliveryCharge is number) &&
+             (!('serviceCharge' in data) || data.serviceCharge is number) &&
+             (!('platformFee' in data) || data.platformFee is number) &&
+             (!('totalAmount' in data) || data.totalAmount is number) &&
+             (!('hasArrivedOutside' in data) || data.hasArrivedOutside is bool) &&
+             (!('arrivalAnnounced' in data) || data.arrivalAnnounced is bool) &&
+             (!('paymentMethod' in data) || data.paymentMethod in ['cash_on_delivery', 'easypaisa_qr']) &&
+             (!('paymentStatus' in data) || data.paymentStatus in ['unpaid', 'payment_uploaded', 'verified', 'rejected']) &&
+             (!('paymentScreenshotUrl' in data) || (data.paymentScreenshotUrl is string && data.paymentScreenshotUrl.size() <= 1000000)) &&
+             (!('paymentAmountPaid' in data) || data.paymentAmountPaid is number) &&
+             (!('paymentRejectionReason' in data) || (data.paymentRejectionReason is string && data.paymentRejectionReason.size() <= 1000)) &&
+             (!('paymentReviewedBy' in data) || (data.paymentReviewedBy is string && data.paymentReviewedBy.size() <= 128)) &&
+             (!('paymentReviewedAt' in data) || (data.paymentReviewedAt is timestamp && data.paymentReviewedAt <= request.time)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time)) &&
+             (!('riderAcceptedAt' in data) || (data.riderAcceptedAt is timestamp && data.riderAcceptedAt <= request.time)) &&
+             (!('deliveryStartedAt' in data) || (data.deliveryStartedAt is timestamp && data.deliveryStartedAt <= request.time)) &&
+             (!('arrivedOutsideAt' in data) || (data.arrivedOutsideAt is timestamp && data.arrivedOutsideAt <= request.time)) &&
+             (!('billSubmittedAt' in data) || (data.billSubmittedAt is timestamp && data.billSubmittedAt <= request.time)) &&
+             (!('billApprovedAt' in data) || (data.billApprovedAt is timestamp && data.billApprovedAt <= request.time)) &&
+             (!('billRejectedAt' in data) || (data.billRejectedAt is timestamp && data.billRejectedAt <= request.time)) &&
+             (!('deliveredAt' in data) || (data.deliveredAt is timestamp && data.deliveredAt <= request.time));
+    }
+
+    function isValidComplaint(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.userRole in ['customer', 'rider'] &&
+             (!('orderId' in data) || (data.orderId is string && data.orderId.size() <= 128)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+             data.subject is string && data.subject.size() > 0 && data.subject.size() <= 200 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 3000 &&
+             data.status in ['open', 'in_review', 'resolved', 'Open', 'In Progress', 'Resolved'] &&
+             (!('adminResponse' in data) || (data.adminResponse is string && data.adminResponse.size() <= 3000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time)) &&
+             (!('respondedAt' in data) || (data.respondedAt is timestamp && data.respondedAt <= request.time));
+    }
+
+    function isValidFeedback(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             (!('orderId' in data) || (data.orderId is string && data.orderId.size() <= 128)) &&
+             (!('riderId' in data) || (data.riderId is string && data.riderId.size() <= 128)) &&
+             data.rating is int && data.rating >= 1 && data.rating <= 5 &&
+             (!('comments' in data) || (data.comments is string && data.comments.size() <= 2000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidAdminSettings(data) {
+      return data.authorizedAdminEmail is string && data.authorizedAdminEmail.size() <= 200 &&
+             (!('centralLatitude' in data) || data.centralLatitude is number) &&
+             (!('centralLongitude' in data) || data.centralLongitude is number) &&
+             data.locality is string && data.locality.size() <= 100 &&
+             data.termsVersion is string && data.termsVersion.size() <= 20 &&
+             (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Users
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       isValidUser(incoming()) &&
+                       (incoming().role != 'admin' || isAdmin());
+      allow update: if (isSignedIn() &&
+                        request.auth.uid == userId &&
+                        incoming().userId == existing().userId &&
+                        incoming().createdAt == existing().createdAt &&
+                        isValidUser(incoming()) &&
+                        (incoming().role == existing().role || isAdmin()) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'preferredLanguage', 'accountStatus', 'updatedAt'])) ||
+                       (isAdmin() && isValidUser(incoming()));
+      allow delete: if isAdmin();
+    }
+
+    // 2. Rider Applications
+    match /riderApplications/{applicationId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'pending' &&
+                       isValidRiderApplication(incoming());
+      allow update: if isAdmin() &&
+                       isValidRiderApplication(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'rejectionReason', 'reviewedBy', 'reviewedAt', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    // 3. Approved Riders
+    match /riders/{riderId} {
+      allow get, list: if isSignedIn();
+      allow create: if (isAdmin() || (
+                        isSignedIn() &&
+                        request.auth.uid == riderId &&
+                        incoming().userId == request.auth.uid &&
+                        incoming().status == 'approved' &&
+                        exists(/databases/$(database)/documents/riderApplications/$(riderId)) &&
+                        get(/databases/$(database)/documents/riderApplications/$(riderId)).data.status == 'approved'
+                      )) && isValidRider(incoming());
+      allow update: if (isSignedIn() &&
+                        request.auth.uid == riderId &&
+                        incoming().userId == request.auth.uid &&
+                        incoming().status == existing().status &&
+                        (!('createdAt' in existing()) || !('createdAt' in incoming()) || incoming().createdAt == existing().createdAt) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['isOnline', 'activeOrderId', 'preferredLanguage', 'updatedAt']) &&
+                        incoming().isOnline is bool &&
+                        (!('updatedAt' in incoming()) || (incoming().updatedAt is timestamp && incoming().updatedAt <= request.time))) ||
+                       (isAdmin() && isValidRider(incoming()));
+      allow delete: if isAdmin();
+    }
+
+    // 4. Terms Versions
+    match /termsVersions/{versionId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidTermsVersion(incoming());
+    }
+
+    // 5. Terms Acceptances (Append-Only Audit Records)
+    match /termsAcceptances/{acceptanceId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidTermsAcceptance(incoming());
+      allow update, delete: if false;
+    }
+
+    // 6. Orders
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && (
+                    resource.data.customerId == request.auth.uid ||
+                    (('assignedRiderId' in resource.data) && resource.data.assignedRiderId == request.auth.uid) ||
+                    (resource.data.orderStatus == 'Pending' && (!('assignedRiderId' in resource.data) || resource.data.assignedRiderId == '' || resource.data.assignedRiderId == null)) ||
+                    isAdmin()
+                 );
+      allow list: if isSignedIn() && (
+                    resource.data.customerId == request.auth.uid ||
+                    (('assignedRiderId' in resource.data) && resource.data.assignedRiderId == request.auth.uid) ||
+                    (resource.data.orderStatus == 'Pending' && (!('assignedRiderId' in resource.data) || resource.data.assignedRiderId == '' || resource.data.assignedRiderId == null)) ||
+                    isAdmin()
+                  );
+      allow create: if isSignedIn() &&
+                       incoming().customerId == request.auth.uid &&
+                       incoming().orderStatus == 'Pending' &&
+                       isValidOrder(incoming());
+      allow update: if isSignedIn() && (
+                       // Customer actions: review bill, cancel, or pay
+                       (resource.data.customerId == request.auth.uid &&
+                        incoming().customerId == existing().customerId &&
+                        (!('createdAt' in existing()) || !('createdAt' in incoming()) || incoming().createdAt == existing().createdAt) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly([
+                          'orderStatus', 'billApprovalStatus', 'billRejectionReason', 'billApprovedAt', 'billRejectedAt',
+                          'paymentMethod', 'paymentStatus', 'paymentScreenshotUrl', 'paymentAmountPaid', 'updatedAt'
+                        ])) ||
+                       // Rider claims unassigned order (Must be an approved rider)
+                       (existing().orderStatus == 'Pending' &&
+                        (!('assignedRiderId' in existing()) || existing().assignedRiderId == '') &&
+                        incoming().assignedRiderId == request.auth.uid &&
+                        incoming().orderStatus == 'Assigned' &&
+                        incoming().customerId == existing().customerId &&
+                        (!('createdAt' in existing()) || !('createdAt' in incoming()) || incoming().createdAt == existing().createdAt) &&
+                        exists(/databases/$(database)/documents/riders/$(request.auth.uid)) &&
+                        get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.status == 'approved' &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['assignedRiderId', 'orderStatus', 'riderAcceptedAt', 'updatedAt'])) ||
+                       // Assigned rider updates status, submits bill, marks arrived outside
+                       (resource.data.assignedRiderId == request.auth.uid &&
+                        incoming().assignedRiderId == existing().assignedRiderId &&
+                        incoming().customerId == existing().customerId &&
+                        (!('createdAt' in existing()) || !('createdAt' in incoming()) || incoming().createdAt == existing().createdAt) &&
+                        (incoming().orderStatus != 'Out for Delivery' || existing().billApprovalStatus == 'approved') &&
+                        incoming().diff(existing()).affectedKeys().hasOnly([
+                          'orderStatus', 'billAmount', 'billPhotoUrl', 'purchasedItemsDescription', 'substitutionsNotes',
+                          'riderNotes', 'billApprovalStatus', 'deliveryDistanceKm', 'deliveryCharge', 'serviceCharge',
+                          'platformFee', 'totalAmount', 'deliveryStartedAt', 'deliveredAt',
+                          'hasArrivedOutside', 'arrivedOutsideAt', 'arrivalAnnounced', 'billSubmittedAt', 'updatedAt'
+                        ])) ||
+                       isAdmin()
+                     );
+      allow delete: if isAdmin();
+    }
+
+    // 7. Complaints
+    match /complaints/{complaintId} {
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidComplaint(incoming());
+      allow update: if isAdmin() &&
+                       isValidComplaint(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'adminResponse', 'respondedAt', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    // 8. Feedback
+    match /feedback/{feedbackId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidFeedback(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // 9. Admin Settings
+    match /adminSettings/{settingId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidAdminSettings(incoming());
+    }
+
+    // 10. Advertisements
+    function isValidAdvertisement(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             (!('businessName' in data) || (data.businessName is string && data.businessName.size() <= 200)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('offer' in data) || (data.offer is string && data.offer.size() <= 200)) &&
+             (!('price' in data) || (data.price is number || data.price == null)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('mediaUrl' in data) || (data.mediaUrl is string && data.mediaUrl.size() <= 1000000)) &&
+             data.mediaType in ['IMAGE', 'VIDEO'] &&
+             (!('posterUrl' in data) || (data.posterUrl is string && data.posterUrl.size() <= 1000000)) &&
+             data.isActive is bool &&
+             data.status in ['DRAFT', 'PUBLISHED', 'PAUSED', 'ARCHIVED'] &&
+             (!('startDate' in data) || (data.startDate is number || data.startDate == null)) &&
+             (!('endDate' in data) || (data.endDate is number || data.endDate == null)) &&
+             (!('viewsCount' in data) || (data.viewsCount is int || data.viewsCount is number)) &&
+             (!('clicksCount' in data) || (data.clicksCount is int || data.clicksCount is number)) &&
+             (!('createdByEmail' in data) || (data.createdByEmail is string && data.createdByEmail.size() <= 200)) &&
+             (!('updatedByEmail' in data) || (data.updatedByEmail is string && data.updatedByEmail.size() <= 200)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    match /advertisements/{adId} {
+      allow get, list: if isSignedIn() && ((resource.data.isActive == true && resource.data.status == 'PUBLISHED') || isAdmin());
+      allow create: if isAdmin() && isValidAdvertisement(incoming());
+      allow delete: if isAdmin();
+      allow update: if (isAdmin() && isValidAdvertisement(incoming())) ||
+                       (isSignedIn() &&
+                        resource.data.isActive == true &&
+                        resource.data.status == 'PUBLISHED' &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['viewsCount', 'clicksCount']));
+    }
+  }
+}

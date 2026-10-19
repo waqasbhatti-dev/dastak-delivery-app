@@ -1,0 +1,194 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for customer, rider, or administrator",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "name": { "type": "string", "description": "Display name" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "role": { "type": "string", "enum": ["customer", "rider", "admin"], "description": "User role" },
+        "preferredLanguage": { "type": "string", "enum": ["en", "ur"], "description": "Preferred UI language" },
+        "accountStatus": { "type": "string", "enum": ["active", "suspended"], "description": "Account status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of update" }
+      },
+      "required": ["userId", "email", "name", "role", "preferredLanguage", "accountStatus", "createdAt"]
+    },
+    "RiderApplication": {
+      "title": "RiderApplication",
+      "description": "Application submitted by aspiring rider for admin review",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Applicant Firebase Auth UID" },
+        "fullName": { "type": "string", "description": "Full name" },
+        "email": { "type": "string", "description": "Applicant email" },
+        "phone": { "type": "string", "description": "Contact phone" },
+        "cnicNumber": { "type": "string", "description": "13-digit Pakistani CNIC number" },
+        "cnicFrontImageUrl": { "type": "string", "description": "Front CNIC image URL or placeholder" },
+        "cnicBackImageUrl": { "type": "string", "description": "Back CNIC image URL or placeholder" },
+        "preferredLanguage": { "type": "string", "enum": ["en", "ur"], "description": "Language choice" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Application approval state" },
+        "rejectionReason": { "type": "string", "description": "Optional reason if rejected" },
+        "submittedAt": { "type": "string", "format": "date-time", "description": "Submission timestamp" },
+        "reviewedAt": { "type": "string", "format": "date-time", "description": "Timestamp when reviewed by admin" },
+        "reviewedBy": { "type": "string", "description": "Admin UID who reviewed" }
+      },
+      "required": ["userId", "fullName", "email", "phone", "cnicNumber", "status", "submittedAt"]
+    },
+    "Rider": {
+      "title": "Rider",
+      "description": "Approved delivery rider record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Rider Firebase Auth UID" },
+        "fullName": { "type": "string", "description": "Rider full name" },
+        "phone": { "type": "string", "description": "Rider contact number" },
+        "email": { "type": "string", "description": "Rider email" },
+        "status": { "type": "string", "enum": ["approved", "suspended"], "description": "Rider status" },
+        "isOnline": { "type": "boolean", "description": "Current availability status" },
+        "preferredLanguage": { "type": "string", "enum": ["en", "ur"], "description": "Language" },
+        "activeOrderId": { "type": "string", "description": "Active delivery order ID if assigned" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["userId", "fullName", "phone", "email", "status", "isOnline", "createdAt"]
+    },
+    "TermsVersion": {
+      "title": "TermsVersion",
+      "description": "Configurable terms and conditions document versions",
+      "type": "object",
+      "properties": {
+        "version": { "type": "string", "description": "Semantic version e.g. 1.0" },
+        "titleEn": { "type": "string", "description": "Title in English" },
+        "titleUr": { "type": "string", "description": "Title in Urdu" },
+        "contentEn": { "type": "string", "description": "Full terms in English" },
+        "contentUr": { "type": "string", "description": "Full terms in Urdu" },
+        "isActive": { "type": "boolean", "description": "Whether this is active required version" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of modification" }
+      },
+      "required": ["version", "titleEn", "titleUr", "contentEn", "contentUr", "isActive", "updatedAt"]
+    },
+    "TermsAcceptance": {
+      "title": "TermsAcceptance",
+      "description": "User acceptance audit record for terms and conditions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Accepting user Auth UID" },
+        "termsVersion": { "type": "string", "description": "Version accepted e.g. 1.0" },
+        "language": { "type": "string", "enum": ["en", "ur"], "description": "Language active at acceptance" },
+        "acceptedAt": { "type": "string", "format": "date-time", "description": "Timestamp when accepted" },
+        "ipOrDeviceId": { "type": "string", "description": "Client device identifier" }
+      },
+      "required": ["userId", "termsVersion", "language", "acceptedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Delivery order in Jhelum City Housing",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "description": "Customer UID" },
+        "assignedRiderId": { "type": "string", "description": "Assigned rider UID if any" },
+        "itemDescription": { "type": "string", "description": "User requested items description" },
+        "itemPhotoUrls": { "type": "array", "description": "Optional photos of requested goods" },
+        "customerPhone": { "type": "string", "description": "Customer contact number" },
+        "deliveryBlock": { "type": "string", "description": "Block in Jhelum City Housing" },
+        "deliveryStreet": { "type": "string", "description": "Street name or number" },
+        "deliveryHouseNumber": { "type": "string", "description": "House number" },
+        "orderStatus": { "type": "string", "description": "Current order state" },
+        "billAmount": { "type": "number", "description": "Cost of purchased items in PKR" },
+        "billPhotoUrl": { "type": "string", "description": "Receipt/bill image URL" },
+        "billApprovalStatus": { "type": "string", "description": "Customer approval state" },
+        "deliveryDistanceKm": { "type": "number", "description": "Distance in km" },
+        "deliveryCharge": { "type": "number", "description": "Delivery fee in PKR" },
+        "serviceCharge": { "type": "number", "description": "Service fee in PKR" },
+        "platformFee": { "type": "number", "description": "Platform fee in PKR" },
+        "totalAmount": { "type": "number", "description": "Total order amount in PKR" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" },
+        "deliveredAt": { "type": "string", "format": "date-time", "description": "Delivery completion timestamp" }
+      },
+      "required": ["customerId", "itemDescription", "customerPhone", "deliveryBlock", "deliveryStreet", "deliveryHouseNumber", "orderStatus", "createdAt"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "Customer or rider complaint report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Submitter Auth UID" },
+        "userRole": { "type": "string", "description": "customer or rider" },
+        "orderId": { "type": "string", "description": "Related order ID if applicable" },
+        "subject": { "type": "string", "description": "Subject of complaint" },
+        "description": { "type": "string", "description": "Detailed explanation" },
+        "status": { "type": "string", "enum": ["open", "in_review", "resolved"], "description": "Ticket status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["userId", "userRole", "subject", "description", "status", "createdAt"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User experience feedback or rating",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Submitter Auth UID" },
+        "rating": { "type": "integer", "description": "Rating score 1 to 5" },
+        "comments": { "type": "string", "description": "Feedback comments" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["userId", "rating", "comments", "createdAt"]
+    },
+    "AdminSettings": {
+      "title": "AdminSettings",
+      "description": "Global application configuration and metadata",
+      "type": "object",
+      "properties": {
+        "authorizedAdminEmail": { "type": "string", "description": "Fixed authorized admin email" },
+        "locality": { "type": "string", "description": "Service area e.g. Jhelum City Housing" },
+        "termsVersion": { "type": "string", "description": "Active terms version" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp" }
+      },
+      "required": ["authorizedAdminEmail", "locality", "termsVersion", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles accessible by owner and admin"
+    },
+    "/riderApplications/{applicationId}": {
+      "schema": "RiderApplication",
+      "description": "Rider onboarding applications readable/creatable by applicant and reviewed by admin"
+    },
+    "/riders/{userId}": {
+      "schema": "Rider",
+      "description": "Approved rider directory and online status"
+    },
+    "/termsVersions/{versionId}": {
+      "schema": "TermsVersion",
+      "description": "Bilingual terms and conditions readable by all users, manageable by admin"
+    },
+    "/termsAcceptances/{acceptanceId}": {
+      "schema": "TermsAcceptance",
+      "description": "Terms acceptance records per user"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "On-demand delivery orders"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Complaints submitted by users"
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "General service feedback"
+    },
+    "/adminSettings/{settingId}": {
+      "schema": "AdminSettings",
+      "description": "Application settings managed exclusively by the authorized administrator"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Dastak",
+  "description": "On-demand delivery service for Jhelum City Housing with bilingual English & Urdu support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
