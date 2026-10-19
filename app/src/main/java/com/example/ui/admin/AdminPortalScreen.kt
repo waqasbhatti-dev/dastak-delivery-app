@@ -47,9 +47,9 @@ import java.util.Date
 import java.util.Locale
 
 const val AUTHORIZED_ADMIN_EMAIL = "mwaqasbhatti1230@gmail.com"
-val AUTHORIZED_ADMIN_EMAILS = setOf(AUTHORIZED_ADMIN_EMAIL, "mwaqasbhatti57570@gmail.com")
+val AUTHORIZED_ADMIN_EMAILS = setOf(AUTHORIZED_ADMIN_EMAIL)
 fun isAuthorizedAdmin(email: String?): Boolean =
-    email != null && AUTHORIZED_ADMIN_EMAILS.any { it.equals(email, ignoreCase = true) }
+    email != null && email.equals(AUTHORIZED_ADMIN_EMAIL, ignoreCase = true)
 
 enum class DateFilterType {
     TODAY,

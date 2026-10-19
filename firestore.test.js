@@ -305,3 +305,35 @@ test("Customer cannot modify an order belonging to another customer", async () =
   }));
 });
 
+// 9. Sole Admin Authorization Verification
+test("Sole Admin (mwaqasbhatti1230@gmail.com) can publish advertisements, but secondary email (mwaqasbhatti57570@gmail.com) is DENIED", async () => {
+  const soleAdminDb = testEnv.authenticatedContext(ADMIN_UID, { email: ADMIN_EMAIL }).firestore();
+  const secondaryUserDb = testEnv.authenticatedContext("user_57570", { email: "mwaqasbhatti57570@gmail.com" }).firestore();
+
+  const adData = {
+    adId: "ad_promo_1",
+    title: "Ramadan Special Discount",
+    mediaUrl: "https://example.com/banner.jpg",
+    mediaType: "IMAGE",
+    status: "PUBLISHED",
+    isActive: true,
+    displayOrder: 1,
+    createdAt: new Date(),
+    createdBy: ADMIN_UID,
+    createdByEmail: ADMIN_EMAIL,
+    placement: "dashboard_banner",
+  };
+
+  // Sole admin can create ad: Allowed
+  await assertSucceeds(soleAdminDb.collection("advertisements").doc("ad_promo_1").set(adData));
+
+  // Secondary email attempts to create/modify ad: DENIED
+  await assertFails(secondaryUserDb.collection("advertisements").doc("ad_promo_2").set({
+    ...adData,
+    adId: "ad_promo_2",
+    createdBy: "user_57570",
+    createdByEmail: "mwaqasbhatti57570@gmail.com",
+  }));
+});
+
+

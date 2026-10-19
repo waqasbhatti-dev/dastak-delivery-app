@@ -747,7 +747,7 @@ fun CustomerLocationScreen(
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(Strings.get("delivery_fee_label", currentLanguage), style = MaterialTheme.typography.bodyMedium)
-                            Text("${PricingCalculator.formatPkr(deliveryCharge)} (PKR 70/km)", fontWeight = FontWeight.Bold)
+                            Text("${PricingCalculator.formatPkr(deliveryCharge)} (PKR ${PricingCalculator.getDeliveryRatePerKm(distanceKm).toInt()}/km)", fontWeight = FontWeight.Bold)
                         }
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

@@ -47,7 +47,7 @@ class OrderRepository(private val db: FirebaseFirestore) {
     private var cachedCentralSettings: AdminSettings? = null
 
     private fun isOrderAdmin(email: String?): Boolean =
-        email != null && setOf("mwaqasbhatti1230@gmail.com", "mwaqasbhatti57570@gmail.com").any { it.equals(email, ignoreCase = true) }
+        email != null && email.equals("mwaqasbhatti1230@gmail.com", ignoreCase = true)
 
     fun requireUserId(): String {
         return auth.currentUser?.uid
@@ -128,16 +128,20 @@ class OrderRepository(private val db: FirebaseFirestore) {
         }
     }
 
-    suspend fun getCustomerOrders(): List<Order> {
+    suspend fun getCustomerOrders(
+        limit: Long = 50,
+        startAfterTimestamp: com.google.firebase.Timestamp? = null
+    ): List<Order> {
         val uid = requireUserId()
         val path = "orders"
         return try {
-            val snapshot = db.collection(path)
+            var query = db.collection(path)
                 .whereEqualTo("customerId", uid)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(50)
-                .get()
-                .await()
+            if (startAfterTimestamp != null) {
+                query = query.startAfter(startAfterTimestamp)
+            }
+            val snapshot = query.limit(limit).get().await()
             snapshot.toObjects(Order::class.java)
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.LIST, path)
@@ -257,16 +261,20 @@ class OrderRepository(private val db: FirebaseFirestore) {
         awaitClose { registration.remove() }
     }
 
-    suspend fun getRiderActiveOrders(): List<Order> {
+    suspend fun getRiderActiveOrders(
+        limit: Long = 50,
+        startAfterTimestamp: com.google.firebase.Timestamp? = null
+    ): List<Order> {
         val riderUid = requireUserId()
         val path = "orders"
         return try {
-            val snapshot = db.collection(path)
+            var query = db.collection(path)
                 .whereEqualTo("assignedRiderId", riderUid)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(50)
-                .get()
-                .await()
+            if (startAfterTimestamp != null) {
+                query = query.startAfter(startAfterTimestamp)
+            }
+            val snapshot = query.limit(limit).get().await()
             snapshot.toObjects(Order::class.java)
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.LIST, path)
@@ -433,26 +441,33 @@ class OrderRepository(private val db: FirebaseFirestore) {
         }
     }
 
-    suspend fun getAllOrdersForAdmin(forceRefresh: Boolean = false): List<Order> {
+    suspend fun getAllOrdersForAdmin(
+        forceRefresh: Boolean = false,
+        limit: Long = 100,
+        startAfterTimestamp: com.google.firebase.Timestamp? = null
+    ): List<Order> {
         val now = System.currentTimeMillis()
         val current = cachedAdminOrders
-        if (!forceRefresh && current != null && (now - lastAdminOrdersFetchMs) < 15_000L) {
+        if (!forceRefresh && startAfterTimestamp == null && current != null && (now - lastAdminOrdersFetchMs) < 15_000L) {
             return current
         }
         val path = "orders"
         return try {
-            val snapshot = db.collection(path)
+            var query = db.collection(path)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
-                .limit(100)
-                .get()
-                .await()
+            if (startAfterTimestamp != null) {
+                query = query.startAfter(startAfterTimestamp)
+            }
+            val snapshot = query.limit(limit).get().await()
             val list = snapshot.toObjects(Order::class.java)
-            cachedAdminOrders = list
-            lastAdminOrdersFetchMs = now
+            if (startAfterTimestamp == null) {
+                cachedAdminOrders = list
+                lastAdminOrdersFetchMs = now
+            }
             list
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.LIST, path)
-            cachedAdminOrders ?: emptyList()
+            if (startAfterTimestamp == null) (cachedAdminOrders ?: emptyList()) else emptyList()
         }
     }
 

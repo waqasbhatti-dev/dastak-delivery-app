@@ -81,7 +81,7 @@ class AdvertisementRepository(
 
     private fun checkAdminPrivilege() {
         val email = auth.currentUser?.email
-        val isAuthorized = email != null && setOf("mwaqasbhatti1230@gmail.com", "mwaqasbhatti57570@gmail.com").any { it.equals(email, ignoreCase = true) }
+        val isAuthorized = email != null && email.equals(AUTHORIZED_ADMIN_EMAIL, ignoreCase = true)
         if (!isAuthorized) {
             throw SecurityException("Unauthorized: Only authorized admin can manage advertisements.")
         }

@@ -218,7 +218,7 @@ class RiderRepository(private val db: FirebaseFirestore) {
             null
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.GET, path)
-            null
+            cachedRider
         }
     }
 

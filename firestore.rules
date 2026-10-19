@@ -27,7 +27,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() &&
              ('email' in request.auth.token) &&
-             (request.auth.token.email.lower() in ['mwaqasbhatti1230@gmail.com', 'mwaqasbhatti57570@gmail.com']);
+             (request.auth.token.email.lower() == 'mwaqasbhatti1230@gmail.com');
     }
 
     // --- Entity Validation Functions ---
